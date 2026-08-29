@@ -1,0 +1,7 @@
+aiogram>=3.0.0
+python-dotenv
+python-docx
+reportlab
+aiosqlite
+google-genai
+aiohttp
