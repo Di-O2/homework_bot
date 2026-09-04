@@ -61,20 +61,32 @@ def extract_title_and_clean_text(response_text: str) -> tuple[str, str]:
     return doc_title, safe_filename, cleaned_text
 
 async def solve_homework(
-    text_query: str = None, 
-    image_bytes: bytes = None, 
+    text_query: str = "",
+    image_bytes: bytes = None,
     mime_type: str = "image/jpeg",
-    lang: str = "en"
-) -> tuple[bool, str, str, str]:
-    """إرسال السؤال وإرجاع: (حالة النجاح, العنوان, اسم الملف المقترح, نص الحل)"""
+    lang: str = "ar"
+):
     contents = []
-    
+
+    # 1. فحص وتصحيح نوع الملف تلقائياً لضمان قبوله في Gemini 2.0
     if image_bytes:
+        # كشف نوع الملف من ترويسة البايتات إذا كان غير مدعوم
+        if mime_type not in ["image/jpeg", "image/png", "image/webp", "application/pdf"]:
+            if image_bytes.startswith(b"%PDF"):
+                mime_type = "application/pdf"
+            elif image_bytes.startswith(b"\x89PNG"):
+                mime_type = "image/png"
+            else:
+                mime_type = "image/jpeg"
+
         contents.append(
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type=mime_type
+            )
         )
-    
-    base_prompt = PROMPTS.get(lang, PROMPTS["en"])
+
+    base_prompt = PROMPTS.get(lang, PROMPTS.get("en", ""))
     user_instruction = f"\n\nStudent Specific Instructions/Prior Notes:\n{text_query}" if text_query else ""
     contents.append(base_prompt + user_instruction)
 
@@ -91,10 +103,12 @@ async def solve_homework(
 
     except Exception as e:
         err_str = str(e)
+        print(f"❌ AI Solver Error: {err_str}")  # طباعة سبب الخطأ الحقيقي في السيرفر فوراً
+        
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
             friendly_err = (
-                "⚠️ **يوجد ضغط مؤقت على محرك الذكاء الاصطناعي (تجاوز معدل الطلبات اللحظي).**\n\n"
-                "💡 **رصيدك محفوظ بالكامل ولم يُخصم منه شيء.**\n"
+                "⚠️ **يوجد ضغط مؤقت على محرك الذكاء الاصطناعي.**\n"
+                "💡 رصيدك محفوظ بالكامل ولم يُخصم منه شيء.\n"
                 "يرجى الانتظار لمدة دقيقة واحدة ثم إعادة إرسال الملف."
             )
         else:
