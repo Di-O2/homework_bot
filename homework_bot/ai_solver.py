@@ -92,7 +92,7 @@ async def solve_homework(
 
     try:
         response = client.models.generate_content(
-            model="gemini-3.0-flash",
+            model="gemini-1.5-flash-latest",
             contents=contents,
             config=types.GenerateContentConfig(
                 temperature=0.1,
