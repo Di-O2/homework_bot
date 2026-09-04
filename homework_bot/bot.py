@@ -132,7 +132,6 @@ def add_markdown_table_to_docx(doc: Document, table_lines: list):
     rows_data = []
     for line in table_lines:
         stripped = line.strip()
-        # تجاهل خطوط الفصل مثل |---|---|
         if re.match(r"^\|?\s*[-:]+\s*(\|\s*[-:]+\s*)+\|?$", stripped):
             continue
         cells = [c.strip() for c in stripped.strip("|").split("|")]
@@ -155,7 +154,6 @@ def add_markdown_table_to_docx(doc: Document, table_lines: list):
             
             tc_pr = cell._tc.get_or_add_tcPr()
             if is_header:
-                # ترويسة الجدول بلون كحلي أكاديمي وكتابة بيضاء
                 shd = parse_xml(r'<w:shd %s w:fill="1B365D"/>' % nsdecls("w"))
                 tc_pr.append(shd)
                 for p in cell.paragraphs:
@@ -176,18 +174,16 @@ def add_markdown_table_to_docx(doc: Document, table_lines: list):
     doc.add_paragraph()
 
 
-# --- توليد ملف Word أكاديمي نظيف 100% ---
+# --- توليد ملف Word أكاديمي نظيف ---
 def create_pro_academic_docx(solution_text: str, custom_title: str, filename: str) -> BufferedInputFile:
     doc = Document()
     
-    # ضبط الهوامش وإضافة أرقام الصفحات (بدون أي ترويسة تدل على البوت)
     for s in doc.sections:
         s.top_margin = Inches(1)
         s.bottom_margin = Inches(1)
         s.left_margin = Inches(1)
         s.right_margin = Inches(1)
 
-        # إضافة ترقيم الصفحات في الأسفل
         footer = s.footer
         footer_p = footer.paragraphs[0]
         footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -198,7 +194,6 @@ def create_pro_academic_docx(solution_text: str, custom_title: str, filename: st
         fld = parse_xml(r'<w:fldSimple %s w:instr="PAGE"/>' % nsdecls("w"))
         footer_p._p.append(fld)
 
-    # عنوان المستند الرئيسي
     is_title_ar = contains_arabic(custom_title)
     title_p = doc.add_paragraph()
     set_paragraph_direction(title_p, is_title_ar)
@@ -219,7 +214,6 @@ def create_pro_academic_docx(solution_text: str, custom_title: str, filename: st
     for line in lines:
         raw = line.strip()
 
-        # كشف الجداول وتجميع أسطرها
         if raw.startswith("|") and raw.endswith("|"):
             table_buffer.append(raw)
             continue
@@ -234,7 +228,6 @@ def create_pro_academic_docx(solution_text: str, custom_title: str, filename: st
         is_ar = contains_arabic(raw)
         cleaned = raw.replace("$$", "").replace("$", "").replace("\\text{", "").replace("}", "")
 
-        # العناوين
         if raw.startswith(("### ", "## ", "# ")):
             hp = doc.add_paragraph()
             set_paragraph_direction(hp, is_ar)
@@ -248,7 +241,6 @@ def create_pro_academic_docx(solution_text: str, custom_title: str, filename: st
             if is_ar:
                 hrun._r.get_or_add_rPr().append(parse_xml(r'<w:rtl %s/>' % nsdecls("w")))
 
-        # القوائم النقطية
         elif raw.startswith(("- ", "* ", "• ")):
             bp = doc.add_paragraph(style="List Bullet")
             set_paragraph_direction(bp, is_ar)
@@ -265,7 +257,6 @@ def create_pro_academic_docx(solution_text: str, custom_title: str, filename: st
                     brun.bold = True
                     brun.font.color.rgb = RGBColor(27, 54, 93)
 
-        # الفقرات العادية
         else:
             p = doc.add_paragraph()
             set_paragraph_direction(p, is_ar)
@@ -318,7 +309,7 @@ def create_pro_academic_pdf(solution_text: str, custom_title: str, filename: str
             continue
             
         is_ar = contains_arabic(raw)
-        align_choice = 2 if is_ar else 0  # 2 = محاذاة يمين للعربي، 0 = محاذاة يسار للإنجليزي
+        align_choice = 2 if is_ar else 0
         
         heading_style = ParagraphStyle(
             "HeadingStyle",
@@ -366,6 +357,7 @@ def get_main_menu_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="💬 خدمة العملاء والدعم", callback_data="btn_support"),
+            InlineKeyboardButton(text="👑 باقة الـ VIP", callback_data="btn_vip"),
         ]
     ])
 
@@ -395,16 +387,19 @@ async def cmd_start(message: types.Message):
     
     welcome_text = (
         f"يا هلا والله بـ **{message.from_user.first_name}**، نوّرت! 🎓✨\n\n"
-        "أنا مساعدك الجامعي الذكي، موجود هنا عشان أسهّل عليك مشوارك وأساعدك في إنجاز الواجبات، تقارير اللاب، وتكاليفك الجامعية أول بأول.\n\n"
-        "ولا تشيل هم التنسيق، حلك يوصلك مرتب وجاهز بملف **Word** أو **PDF** للتسليم فوراً! 😉\n\n"
+        "أنا رفيقك الجامعي الذكي، موجود هنا عشان أساعدك.\n\n"
+        "والتنسيق؟ مزهّب لك على سنقة عشرة بملف Word اذا ودك تعدله وتنسقه بلمستك أكثر أو PDF جاهز للتسليم على طول! 😉\n\n"
         "────────────────\n"
         "📌 **كيف تبدأ بـ 3 خطوات بس؟**\n"
-        "1️⃣ **اكتب شروطك** (اختياري) مثل: *إنجليزي فقط، ركز على الخاتمة والمراجع*.\n"
-        "2️⃣ **أرسل ملف الواجب** على طول (صورة، PDF، أو Word).\n"
-        "3️⃣ **اختر الصيغة** (**Word** أو **PDF**) واستلم ملفك فوراً!\n"
+        "1️⃣ **اكتب شروطك (اختياري):** مثل: إنجليزي فقط، ركز على الخاتمة والمراجع.\n"
+        "2️⃣ **أرسل ملف الواجب على طول:** (صورة، PDF، أو Word).\n"
+        "3️⃣ **اختر الصيغة (Word أو PDF)** واستلم ملفك فوراً!\n"
         "────────────────\n\n"
-        f"🔹 **رصيدك الحالي:** {credits} نقاط.\n"
-        "🎁 *(شحنا لك رصيد تجريبي مجاني عشان تجرب أول حل وتشوف الجودة بنفسك)*"
+        "👑 **وإذا أنت عميل VIP؟**\n"
+        "الأولوية لك في سرعة الإنجاز والمعالجة الفورية، اضغط على زر **باقة الـ VIP** بالأسفل.\n\n"
+        "💬 **ولا تشيل هم إذا فيه أي مشاكل تواجهك:**\n"
+        "الدعم الفني بإنتظارك، اضغط على زر **خدمة العملاء** وحنا معك على طول.\n\n"
+        f"🔹 **رصيدك الحالي:** **{credits}** نقاط."
     )
     
     await message.answer(
@@ -412,6 +407,19 @@ async def cmd_start(message: types.Message):
         reply_markup=get_main_menu_keyboard(),
         parse_mode="Markdown"
     )
+
+
+@dp.callback_query(F.data == "btn_vip")
+async def btn_vip_handler(callback: types.CallbackQuery):
+    await callback.answer()
+    vip_info = (
+        "👑 **مميزات باقة كبار الشخصيات (VIP):**\n\n"
+        "⚡ أولوية مطلقة وفورية في إنجاز الحلول.\n"
+        "♾️ رصيد مفتوح لكافة الواجبات والتقارير.\n"
+        "👨‍💼 خط دعم مباشر وسريع لحل أي إشكال على مدار الساعة.\n\n"
+        "📌 لتفعيل الباقة أو الترقية، تواصل مباشرة عبر زر **خدمة العملاء**."
+    )
+    await callback.message.answer(vip_info, parse_mode="Markdown")
 
 
 @dp.message(Command("add"))
@@ -615,7 +623,12 @@ async def process_solution_options(callback: types.CallbackQuery):
     _, lang, out_type = callback.data.split("_")
     await callback.answer()
     
-    wait_msg = await callback.message.edit_text("⏳ **جاري قراءة الملف وتحليل الحل بالذكاء الاصطناعي...**")
+    processing_msg = (
+        "📥  تم استلام الملف وجاري المعالجة ...\n\n"
+        "⚙️  `[ ▓▓▓▓▓▓▓▓░░ ]` 80%\n"
+        "⏱️  الوقت المتوقع : 10 - 20 ثانية فقط. 🚀"
+    )
+    wait_msg = await callback.message.edit_text(processing_msg, parse_mode="Markdown")
 
     # 1. إرسال الطلب لمحرك الذكاء الاصطناعي
     success, doc_title, safe_filename, solution = await ai_solver.solve_homework(
@@ -625,7 +638,7 @@ async def process_solution_options(callback: types.CallbackQuery):
         lang=lang
     )
 
-    # إذا حدث خطأ (مثل 429 أو مشاكل كوتا): لا يتم الخصم
+    # إذا حدث خطأ: لا يتم الخصم
     if not success:
         await wait_msg.edit_text(solution)
         USER_PENDING_TASKS.pop(user_id, None)
@@ -654,11 +667,16 @@ async def process_solution_options(callback: types.CallbackQuery):
             else:
                 await callback.message.answer(solution)
 
-        # 3. الخصم فقط بعد تسليم الملف بنجاح
+        # 3. الخصم فقط بعد تسليم الملف بنجاح وتحديث بطاقة الإنجاز
         await db.deduct_credit(user_id)
         credits = await db.get_or_create_user(user_id)
-        await callback.message.answer(f"✅ الرصيد المتبقي في حسابك: **{credits}** نقاط.")
-        await wait_msg.delete()
+        
+        completed_msg = (
+            "✅  **تم إنجاز المهمة وتسليم المستند بنجاح!** 🎓\n\n"
+            "⚙️  `[ ▓▓▓▓▓▓▓▓▓▓ ]` 100%\n"
+            f"💳  الرصيد المتبقي في حسابك: **{credits}** نقاط."
+        )
+        await wait_msg.edit_text(completed_msg, parse_mode="Markdown")
 
     except Exception as e:
         print(f"Delivery Error: {e}")
