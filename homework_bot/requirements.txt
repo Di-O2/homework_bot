@@ -5,3 +5,5 @@ reportlab
 aiosqlite
 google-genai
 aiohttp
+arabic-reshaper
+python-bidi
